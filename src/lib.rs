@@ -1,12 +1,15 @@
-use std::collections::HashMap;
-
 use chrono::prelude::*;
 use chrono_tz::Tz;
+use chrono_tz::Tz::UTC;
 use fhir_rs::model::Timing::Timing;
-use rrule::{RRule, Options, Frequenzy};
+use rrule::Tz as RRuleTz;
+use rrule::{Frequency, RRule, RRuleSet};
+use std::collections::HashMap;
 
-fn map_to_rrule(timing: Timing) -> RRule {
-    let daily_freq_map: HashMap<i64, Vec<usize>> = HashMap::from([
+fn map_to_rrule(timing: Timing) -> RRuleSet {
+    let timezone = RRuleTz::Europe__London;
+
+    let daily_freq_map: HashMap<i64, Vec<u8>> = HashMap::from([
         (1, vec![8]),
         (2, vec![8, 20]),
         (3, vec![8, 14, 20]),
@@ -16,16 +19,20 @@ fn map_to_rrule(timing: Timing) -> RRule {
     let repeat = timing.repeat().unwrap();
     let bounds = repeat.bounds_period().unwrap();
     let dtstart_str = bounds.start().unwrap();
-    let dtstart = DateTime::parse_from_rfc3339(dtstart_str).unwrap();
-    let tz: Tz = "Europe/London".parse().unwrap();
-    let options = Options::new()
-        .dtstart(dtstart.with_timezone(&tz))
-        .byhour(daily_freq_map.get(&repeat.frequency().unwrap()).unwrap().to_owned())
-        .freq(Frequenzy::Daily)
-        .build()
+    let dtstart = DateTime::parse_from_rfc3339(dtstart_str)
+        .unwrap()
+        .with_timezone(&timezone);
+    let by_hour = daily_freq_map
+        .get(&repeat.frequency().unwrap())
+        .unwrap()
+        .to_owned();
+
+    let rrule = RRule::new(Frequency::Daily)
+        .by_hour(by_hour)
+        .validate(dtstart)
         .unwrap();
-    let rrule = RRule::new(options);
-    rrule
+
+    RRuleSet::new(dtstart).rrule(rrule)
 }
 
 pub fn get_occurrences(
@@ -33,41 +40,48 @@ pub fn get_occurrences(
     window_start: DateTime<FixedOffset>,
     window_finish: DateTime<FixedOffset>,
 ) -> Vec<DateTime<Tz>> {
+    const MAX_RESULTS: u16 = 65535;
     let rrule = map_to_rrule(timing);
-    let tz: Tz = "Europe/London".parse().unwrap();
-    let occurrences = rrule.between(window_start.with_timezone(&tz), window_finish.with_timezone(&tz), true);
+    let filtered = rrule
+        .after(window_start.with_timezone(&RRuleTz::Europe__London))
+        .before(window_finish.with_timezone(&RRuleTz::Europe__London));
+    let occurrences = filtered
+        .all(MAX_RESULTS)
+        .dates
+        .iter()
+        .map(|d| d.with_timezone(&UTC))
+        .collect();
     occurrences
 }
 
 #[cfg(test)]
 mod tests {
-    use chrono::FixedOffset;
     use chrono::prelude::DateTime;
-    use chrono_tz::Tz;
-    use fhir_rs::model::Timing::TimingBuilder;
-    use fhir_rs::model::Timing_Repeat::{Timing_RepeatBuilder, Timing_RepeatPeriodUnit};
-    use fhir_rs::model::Period::PeriodBuilder;
+    use fhir_rs::model::Timing::Timing;
+    use serde_json::json;
 
-    const window_start: DateTime<FixedOffset> = DateTime::parse_from_rfc3339("2021-06-21T00:00:00+01:00").unwrap();
-    const window_finish: DateTime<FixedOffset> = DateTime::parse_from_rfc3339("2021-06-22T00:00:00+01:00").unwrap();
+    fn parse_datetime(date: &str) -> DateTime<chrono::FixedOffset> {
+        DateTime::parse_from_rfc3339(date).unwrap()
+    }
 
     #[test]
     fn take_once_a_day() {
-        let mut repeat_builder = Timing_RepeatBuilder::new();
-        repeat_builder
-            .frequency(1)
-            .period(1f64)
-            .period_unit(Timing_RepeatPeriodUnit::D)
-            .bounds_period(PeriodBuilder::new().start("2021-06-21T00:00:00+01:00").build());
+        let window_start = parse_datetime("2021-06-21T00:00:00+01:00");
+        let window_finish = parse_datetime("2021-06-22T00:00:00+01:00");
 
-        let mut timing_builder = TimingBuilder::new();
-        timing_builder.repeat(repeat_builder.build());
-        let timing = timing_builder.build();
+        let timing_json = json!({
+            "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d",
+                "boundsPeriod": {
+                    "start": "2021-06-21T00:00:00+01:00"
+                }
+            }
+        });
+        let timing = Timing::new(&timing_json);
 
-        let tz: Tz = "Europe/London".parse().unwrap();
-        let expected = vec![
-            DateTime::parse_from_rfc3339("2021-06-21T08:00:00+01:00").unwrap().with_timezone(&tz),
-        ];
+        let expected = vec![parse_datetime("2021-06-21T08:00:00+01:00")];
         let actual = super::get_occurrences(timing, window_start, window_finish);
 
         assert_eq!(actual, expected);
@@ -75,22 +89,25 @@ mod tests {
 
     #[test]
     fn take_three_times_a_day() {
-        let mut repeat_builder = Timing_RepeatBuilder::new();
-        repeat_builder
-            .frequency(3)
-            .period(1f64)
-            .period_unit(Timing_RepeatPeriodUnit::D)
-            .bounds_period(PeriodBuilder::new().start("2021-06-21T00:00:00+01:00").build());
+        let window_start = parse_datetime("2021-06-21T00:00:00+01:00");
+        let window_finish = parse_datetime("2021-06-22T00:00:00+01:00");
 
-        let mut timing_builder = TimingBuilder::new();
-        timing_builder.repeat(repeat_builder.build());
-        let timing = timing_builder.build();
+        let timing_json = json!({
+            "repeat": {
+                "frequency": 3,
+                "period": 1,
+                "periodUnit": "d",
+                "boundsPeriod": {
+                    "start": "2021-06-21T00:00:00+01:00"
+                }
+            }
+        });
+        let timing = Timing::new(&timing_json);
 
-        let tz: Tz = "Europe/London".parse().unwrap();
         let expected = vec![
-            DateTime::parse_from_rfc3339("2021-06-21T08:00:00+01:00").unwrap().with_timezone(&tz),
-            DateTime::parse_from_rfc3339("2021-06-21T14:00:00+01:00").unwrap().with_timezone(&tz),
-            DateTime::parse_from_rfc3339("2021-06-21T20:00:00+01:00").unwrap().with_timezone(&tz),
+            parse_datetime("2021-06-21T08:00:00+01:00"),
+            parse_datetime("2021-06-21T14:00:00+01:00"),
+            parse_datetime("2021-06-21T20:00:00+01:00"),
         ];
         let actual = super::get_occurrences(timing, window_start, window_finish);
 
