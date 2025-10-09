@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+    <meta charset="utf-8" />
+    <title>hello-wasm example</title>
+</head>
+<body>
+<p id="content"></p>
+<script type="module">
+  import init, { greet, between } from "./pkg/flamethrower.js";
+
+  init().then(() => {
+    document.querySelector('#content').innerHTML = greet("foobar");
+    setTimeout(() => {
+      document.querySelector('#content').innerHTML = '<pre>' + JSON.stringify(between('2024-01-01', '2024-02-01'), null, 2) + '</pre>';
+    }, 2000);
+  });
+</script>
+</body>
+</html>

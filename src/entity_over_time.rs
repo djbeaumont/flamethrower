@@ -112,117 +112,56 @@ impl<'a> EntityOverTime<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+    use chrono::NaiveDate;
+    use crate::entity_over_time::EntityOverTime;
+    use crate::timing::{FhirPeriod, FhirTiming, FhirTimingRepeat};
 
+    #[test]
+    fn task_schedule_over_time() {
+        let dt1 = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+        let dt2 = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();
+        let dt3 = NaiveDate::from_ymd_opt(2024, 1, 3).unwrap().and_hms_opt(0, 0, 0).unwrap();
+
+        let mut initial_attributes: HashMap<String, &String> = HashMap::new();
+        let initial_attribute_val = "immutable_val".to_string();
+        initial_attributes.insert("immutable".to_string(), &initial_attribute_val);
+        let initial_mutable_attribute_val = "mutable_val".to_string();
+        initial_attributes.insert("mutable".to_string(), &initial_mutable_attribute_val);
+
+        let initial_timing = FhirTiming {
+            repeat: FhirTimingRepeat {
+                bounds: FhirPeriod {
+                    start: Some(NaiveDate::from_ymd_opt(2024, 1, 1).unwrap()),
+                    end: None,
+                },
+                frequency: 1,
+                period: 1,
+                period_unit: "d".to_string(),
+                day_of_week: vec![],
+                time_of_day: vec![],
+                when: vec![],
+            },
+        };
+
+        let updated_timing = FhirTiming {
+            repeat: FhirTimingRepeat {
+                bounds: FhirPeriod {
+                    start: Some(NaiveDate::from_ymd_opt(2024, 1, 3).unwrap()),
+                    end: None,
+                },
+                frequency: 1,
+                period: 2,
+                period_unit: "d".to_string(),
+                day_of_week: vec![],
+                time_of_day: vec![],
+                when: vec![],
+            },
+        };
+
+        let first_version = EntityOverTime::new_with_initial_state(initial_attributes, &initial_timing, &dt1);
+        let updated_attribute_val = "mutable_val_v2".to_string();
+        let second_version = first_version.with_attribute_value("mutable".to_string(), &updated_attribute_val, &dt2);
+        let _ = second_version.with_timing(&updated_timing, &dt3);
+    }
 }
-
-//
-// impl RecurrentVersionedEntity {
-//     pub fn new() -> Self {
-//         RecurrentVersionedEntity {
-//             attributes: HashMap::new(),
-//             timing: MultiAttributeInterval {
-//                 intervals: Vec::new(),
-//             },
-//         }
-//     }
-//
-//     pub fn new_with_initial_state(
-//         attributes: HashMap<String, Box<dyn Any>>,
-//         timing: FhirTiming,
-//         effective_from: NaiveDateTime,
-//     ) -> Self {
-//         let mut attributes_intervals: HashMap<String, MultiAttributeInterval<Box<dyn Any>>> = HashMap::new();
-//
-//         for (name, value) in attributes {
-//             let attribute_interval = AttributeInterval {
-//                 start: effective_from,
-//                 end: None,
-//                 value,
-//             };
-//             let multi_intervals = MultiAttributeInterval {
-//                 intervals: vec![attribute_interval],
-//             };
-//             attributes_intervals.insert(name, multi_intervals);
-//         }
-//
-//         let mut timing_intervals: MultiAttributeInterval<FhirTiming> = MultiAttributeInterval {
-//             intervals: Vec::new(),
-//         };
-//
-//         timing_intervals.intervals.push(AttributeInterval {
-//             start: effective_from,
-//             end: None,
-//             value: timing,
-//         });
-//
-//         RecurrentVersionedEntity {
-//             attributes: attributes_intervals,
-//             timing: timing_intervals,
-//         }
-//     }
-//
-//     pub fn with_attributes(&self, attributes: HashMap<String, Box<dyn Any>>, effective_from: NaiveDateTime) -> Self {
-//         let mut updated_attributes: HashMap<String, MultiAttributeInterval<Box<dyn Any>>> = self.attributes.clone();
-//
-//         for (name, value) in attributes {
-//             let attribute_interval = AttributeInterval {
-//                 start: effective_from,
-//                 end: None,
-//                 value,
-//             };
-//
-//             let multi_intervals = if let Some(existing) = updated_attributes.get_mut(&name) {
-//                 existing.intervals.push(attribute_interval);
-//                 existing.clone()
-//             } else {
-//                 MultiAttributeInterval {
-//                     intervals: vec![attribute_interval],
-//                 }
-//             };
-//
-//             updated_attributes.insert(name, multi_intervals);
-//         }
-//
-//         RecurrentVersionedEntity {
-//             attributes: updated_attributes,
-//             timing: self.timing.clone(),
-//         }
-//     }
-// }
-
-// #[cfg(test)]
-// mod tests {
-//     use std::any::Any;
-//     use std::collections::HashMap;
-//
-//     use crate::timing::{FhirPeriod, FhirTimingRepeat};
-//     // use super::{FhirTiming, RecurrentVersionedEntity};
-//
-//     // #[test]
-//     // fn project_with_attribute_changes() {
-//     //     let mut initial_attributes: HashMap<String, Box<dyn Any>> = HashMap::new();
-//     //     initial_attributes.insert("id".to_owned(), Box::new("foobar".to_owned()));
-//     //     let initial_timing = FhirTiming {
-//     //         repeat: FhirTimingRepeat {
-//     //             bounds: FhirPeriod {
-//     //                 start: Some(chrono::NaiveDate::from_ymd_opt(2024, 12, 30).unwrap()),
-//     //                 end: None,
-//     //             },
-//     //             frequency: 1,
-//     //             period: 1,
-//     //             period_unit: "d".to_string(),
-//     //             day_of_week: vec![],
-//     //             time_of_day: vec![],
-//     //             when: vec!["MORN".to_owned()],
-//     //         },
-//     //     };
-//     //     let effective_from = chrono::NaiveDateTime::from(chrono::NaiveDate::from_ymd_opt(2024, 12, 30).unwrap());
-//     //     let versioned = RecurrentVersionedEntity::new_with_initial_state(
-//     //         initial_attributes,
-//     //         initial_timing,
-//     //         effective_from,
-//     //     );
-//     //     let updated = versioned.with_attribute_interval()
-//     //     // TODO - assert something
-//     // }
-// }

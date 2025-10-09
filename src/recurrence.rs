@@ -8,7 +8,7 @@ use chrono_tz::Tz::UTC;
 use crate::interval;
 use crate::timing::{FhirTiming, Occurrence};
 
-fn between(timing: &FhirTiming, bounds: &interval::Interval) -> Vec<NaiveDateTime> {
+pub fn between(timing: &FhirTiming, bounds: &interval::Interval) -> Vec<NaiveDateTime> {
     const MAX_RESULTS: u16 = 65535;
 
     let mapped = map_timing_to_rrule(timing);
