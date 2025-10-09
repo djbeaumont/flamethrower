@@ -3,9 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <title>hello-wasm example</title>
+  <style>
+    html, body {
+        font-family: system-ui;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 0.5rem;
+    }
+    .timing-form {
+        margin: 1rem 0;
+        width: 30rem;
+    }
+    .button {
+        margin: 1rem 0;
+    }
+  </style>
 </head>
 <body>
-<p id="content"></p>
+
 <script type="module">
   import { html, render, Component } from "https://unpkg.com/htm/preact/standalone.module.js"
   import init, { greet, between } from "./pkg/flamethrower.js";
@@ -18,9 +35,82 @@
     }
   }
 
+  class InputField extends Component {
+    render({ name, label, value, onChange }) {
+      return html`
+        <div class="field">
+          <label for=${name}>${label}</label>
+          <input
+              type="text"
+              value=${value}
+              onChange=${e => onChange(e.target.value)}
+          />
+        </div>
+      `;
+    }
+  }
+
+  class SelectField extends Component {
+    render({ name, label, value, onChange, options }) {
+      return html`
+        <div class="field">
+          <label for=${name}>${label}</label>
+          <select name=${name} onChange=${e => onChange(e.target.value)}>
+            ${Object.keys(options).map(option => html`
+              <option value=${option}>${options[option]}</option>
+            `)}
+          </select>
+        </div>
+      `;
+    }
+  }
+
   class TimingForm extends Component {
-    render() {
-      return html``;
+    constructor() {
+      super();
+    }
+
+    onChange(props, state, name, val) {
+      const newState = { ...state, [name]: val };
+      this.setState(newState);
+      props.onChange?.({ repeat: newState });
+    }
+
+    render(props, state) {
+      return html`
+        <div class="timing-form">
+          <${InputField}
+            name="frequency"
+            label="Frequency"
+            value=${this.state.frequency}
+            onChange=${val => this.onChange(props, state, 'frequency', val)}
+          />
+          <${InputField}
+            name="period"
+            label="Period"
+            value=${this.state.period}
+            onChange=${val => this.onChange(props, state, 'period', val)}
+          />
+          <${SelectField}
+              name="periodUnit"
+              label="Period unit"
+              value=${this.state.periodUnit}
+              onChange=${val => this.onChange(props, state, 'periodUnit', val)}
+              options=${{h: 'Hours', d: 'Days', wk: 'Weeks' }}
+          />
+          <button class="button" type="reset">Reset</button>
+        </div>
+      `;
+    }
+  }
+
+  class TimingDisplay extends Component {
+    render({ value }) {
+      return html`
+        <pre>
+          ${JSON.stringify(value, null, 2)}
+        </pre>
+      `;
     }
   }
 
@@ -34,6 +124,8 @@
     render() {
       return html`
         <${Header}/>
+        <${TimingForm} onChange=${timing => this.setState({ timing  })} />
+        <${TimingDisplay} value=${this.state.timing} />
         <${OccurrencesDisplay} />
       `;
     }
@@ -41,5 +133,6 @@
 
   render(html`<${App} />`, document.body);
 </script>
+
 </body>
 </html>
