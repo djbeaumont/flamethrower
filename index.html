@@ -5,7 +5,12 @@
   <title>hello-wasm example</title>
   <style>
     html, body {
+        background-color: #49483E;
+        color: #EEE;
         font-family: system-ui;
+    }
+    .panel {
+        margin-bottom: 1rem;
     }
     .field {
       display: flex;
@@ -17,7 +22,7 @@
         width: 30rem;
     }
     .button {
-        margin: 1rem 0;
+        margin-bottom: 1rem;
     }
   </style>
 </head>
@@ -57,7 +62,9 @@
           <label for=${name}>${label}</label>
           <select name=${name} onChange=${e => onChange(e.target.value)}>
             ${Object.keys(options).map(option => html`
-              <option value=${option}>${options[option]}</option>
+              <option value=${option} selected=${option === value ? "selected" : undefined}>
+                ${options[option]}
+              </option>
             `)}
           </select>
         </div>
@@ -66,19 +73,36 @@
   }
 
   class TimingForm extends Component {
-    constructor() {
+    constructor({ value }) {
       super();
+      this.state = this.getDerivedStateFromProps(value);
+    }
+
+    getDerivedStateFromProps(nextProps, prevState) {
+      return {
+        frequency: nextProps.repeat.frequency.toString(),
+        period: nextProps.repeat.period.toString(),
+        periodUnit: nextProps.repeat.periodUnit,
+      }
     }
 
     onChange(props, state, name, val) {
       const newState = { ...state, [name]: val };
       this.setState(newState);
-      props.onChange?.({ repeat: newState });
+      // TODO - better serialisation of the flat form values into a FHIR timing object
+      const newTiming = {
+        repeat: {
+          frequency: Number.parseInt(newState.frequency),
+          period: Number.parseInt(newState.period),
+          periodUnit: newState.periodUnit,
+        },
+      };
+      props.onChange?.(newTiming);
     }
 
     render(props, state) {
       return html`
-        <div class="timing-form">
+        <div class="panel timing-form">
           <${InputField}
             name="frequency"
             label="Frequency"
@@ -107,24 +131,47 @@
   class TimingDisplay extends Component {
     render({ value }) {
       return html`
-        <pre>
-          ${JSON.stringify(value, null, 2)}
-        </pre>
+        <div class="panel">
+          <pre>
+            ${JSON.stringify(value, null, 2)}
+          </pre>
+        </div>
       `;
     }
   }
 
   class OccurrencesDisplay extends Component {
     render() {
-      return html`<pre>${JSON.stringify(between('2024-01-01', '2024-02-01'), null, 2)}</pre>`;
+      const occurrences = between('2024-01-01', '2024-02-01');
+      return html`
+        <div class="panel">
+          <pre>
+            ${JSON.stringify(occurrences, null, 2)}
+          </pre>
+        </div>
+      `;
     }
   }
 
   class App extends Component {
+    constructor() {
+      super();
+      const initialState = {
+        timing: {
+          repeat: {
+            frequency: 1,
+            period: 1,
+            periodUnit: 'd',
+          }
+        }
+      }
+      this.state = initialState;
+    }
+
     render() {
       return html`
         <${Header}/>
-        <${TimingForm} onChange=${timing => this.setState({ timing  })} />
+        <${TimingForm} value=${this.state.timing} onChange=${timing => this.setState({ timing  })} />
         <${TimingDisplay} value=${this.state.timing} />
         <${OccurrencesDisplay} />
       `;
