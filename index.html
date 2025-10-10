@@ -34,9 +34,9 @@
 
   await init();
 
-  class Header extends Component {
-    render() {
-      return html`<h1>${greet("foobar")}</h1>`;
+  class Heading extends Component {
+    render({ as, children }) {
+      return html`<${as}>${children}<//>`;
     }
   }
 
@@ -103,6 +103,7 @@
     render(props, state) {
       return html`
         <div class="panel timing-form">
+          <${Heading} as="h2">1. Enter timing details</>
           <${InputField}
             name="frequency"
             label="Frequency"
@@ -132,9 +133,32 @@
     render({ value }) {
       return html`
         <div class="panel">
+          <${Heading} as="h2">2. Review generated FHIR timing</${Heading}>
           <pre>
             ${JSON.stringify(value, null, 2)}
           </pre>
+        </div>
+      `;
+    }
+  }
+
+  class ProjectWindowForm extends Component {
+    render() {
+      return html`
+        <div class="panel timing-form">
+          <${Heading} as="h2">3. Enter project window</>
+          <${InputField}
+            name="start"
+            label="Start date"
+            value="2024-01-01"
+            onChange=${val => console.log(val)}
+          />
+          <${InputField}
+            name="end"
+            label="End date"
+            value="2024-02-01"
+            onChange=${val => console.log(val)}
+          />
         </div>
       `;
     }
@@ -145,6 +169,7 @@
       const occurrences = between('2024-01-01', '2024-02-01');
       return html`
         <div class="panel">
+          <${Heading} as="h2">4. Project occurrences</${Heading}>
           <pre>
             ${JSON.stringify(occurrences, null, 2)}
           </pre>
@@ -170,9 +195,10 @@
 
     render() {
       return html`
-        <${Header}/>
+        <${Heading} as="h1">FHIR Timing Projector</>
         <${TimingForm} value=${this.state.timing} onChange=${timing => this.setState({ timing  })} />
         <${TimingDisplay} value=${this.state.timing} />
+        <${ProjectWindowForm} />
         <${OccurrencesDisplay} />
       `;
     }
