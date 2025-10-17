@@ -8,11 +8,12 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-chrono = { version = "0.4.41", features = ["serde"] }
+chrono = { version = "0.4.41", features = ["serde", "wasmbind"] }
 chrono-tz = { version = "0.10.4" }
 fhir-rs = { git = "https://github.com/ocrickard/fhir-rs" }
 rrule = "0.14.0"
 serde = { version = "1.0.219", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
 wasm-bindgen = "0.2"
 
 [dev-dependencies]

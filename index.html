@@ -30,7 +30,7 @@
 
 <script type="module">
   import { html, render, Component } from "https://unpkg.com/htm/preact/standalone.module.js"
-  import init, { greet, between } from "./pkg/flamethrower.js";
+  import init, { between, project_occurrences } from "./pkg/flamethrower.js";
 
   await init();
 
@@ -167,6 +167,26 @@
   class OccurrencesDisplay extends Component {
     render() {
       const occurrences = between('2024-01-01', '2024-02-01');
+
+      const timing = {
+        repeat: {
+          bounds: {
+            start: '2024-01-01',
+            end: '2025-02-01',
+          },
+          frequency: 1,
+          period: 1,
+          period_unit: 'd',
+          day_of_week: [],
+          time_of_day: [],
+          when: [],
+        }
+      }
+
+      const occurrences2 = project_occurrences(timing, '2024-03-01', '2024-04-01');
+
+      console.log(occurrences2);
+
       return html`
         <div class="panel">
           <${Heading} as="h2">4. Project occurrences</${Heading}>
