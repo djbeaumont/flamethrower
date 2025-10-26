@@ -2,7 +2,7 @@
 <html lang="en-US">
 <head>
   <meta charset="utf-8" />
-  <title>hello-wasm example</title>
+  <title>flamethrower: projection of recurring FHIR timing structures</title>
   <style>
     html, body {
         background-color: #49483E;
@@ -30,7 +30,7 @@
 
 <script type="module">
   import { html, render, Component } from "https://unpkg.com/htm/preact/standalone.module.js"
-  import init, { between, project_occurrences } from "./pkg/flamethrower.js";
+  import init, { project_occurrences } from "./pkg/flamethrower.js";
 
   await init();
 
@@ -143,21 +143,21 @@
   }
 
   class ProjectWindowForm extends Component {
-    render() {
+    render({ projectionStart, projectionEnd, onChange }) {
       return html`
         <div class="panel timing-form">
-          <${Heading} as="h2">3. Enter project window</>
+          <${Heading} as="h2">3. Enter projection window</>
           <${InputField}
             name="start"
             label="Start date"
-            value="2024-01-01"
-            onChange=${val => console.log(val)}
+            value=${projectionStart}
+            onChange=${val => onChange(val, projectionEnd)}
           />
           <${InputField}
             name="end"
             label="End date"
-            value="2024-02-01"
-            onChange=${val => console.log(val)}
+            value=${projectionEnd}
+            onChange=${val => onChange(projectionStart, val)}
           />
         </div>
       `;
@@ -165,10 +165,23 @@
   }
 
   class OccurrencesDisplay extends Component {
-    render() {
-      const occurrences = between('2024-01-01', '2024-02-01');
+    render({ value }) {
+      return html`
+        <div class="panel">
+          <${Heading} as="h2">4. Project occurrences</${Heading}>
+          <pre>
+            ${JSON.stringify(value, null, 2)}
+          </pre>
+        </div>
+      `;
+    }
+  }
 
-      const timing = {
+  class App extends Component {
+    constructor() {
+      super();
+
+      const initialTiming = {
         repeat: {
           bounds: {
             start: '2024-01-01',
@@ -181,45 +194,43 @@
           time_of_day: [],
           when: [],
         }
-      }
+      };
 
-      const occurrences2 = project_occurrences(timing, '2024-03-01', '2024-04-01');
+      const initialProjectionStart = '2024-03-01';
+      const initialProjectionEnd = '2024-04-01';
 
-      console.log(occurrences2);
+      const initialOccurrences = project_occurrences(initialTiming, initialProjectionStart, initialProjectionEnd);
 
-      return html`
-        <div class="panel">
-          <${Heading} as="h2">4. Project occurrences</${Heading}>
-          <pre>
-            ${JSON.stringify(occurrences, null, 2)}
-          </pre>
-        </div>
-      `;
+      this.state = {
+        timing: initialTiming,
+        occurrences: initialOccurrences,
+        projectionStart: initialProjectionStart,
+        projectionEnd: initialProjectionEnd,
+      };
     }
-  }
 
-  class App extends Component {
-    constructor() {
-      super();
-      const initialState = {
-        timing: {
-          repeat: {
-            frequency: 1,
-            period: 1,
-            periodUnit: 'd',
-          }
-        }
-      }
-      this.state = initialState;
+    onUpdateTiming(timing) {
+      const occurrences = project_occurrences(timing, this.state.projectionStart, this.state.projectionEnd);
+      this.setState({ timing: timing, occurrences: occurrences });
+    }
+
+    onUpdateProjectionWindow(projectionStart, projectionEnd) {
+      console.log(this);
+      const occurrences = project_occurrences(this.state.timing, projectionStart, projectionEnd)
+      this.setState({ occurrences, projectionStart, projectionEnd });
     }
 
     render() {
       return html`
         <${Heading} as="h1">FHIR Timing Projector</>
-        <${TimingForm} value=${this.state.timing} onChange=${timing => this.setState({ timing  })} />
+        <${TimingForm} value=${this.state.timing} onChange=${this.onUpdateTiming} />
         <${TimingDisplay} value=${this.state.timing} />
-        <${ProjectWindowForm} />
-        <${OccurrencesDisplay} />
+        <${ProjectWindowForm}
+            projectionStart=${this.state.projectionStart}
+            projectionEnd=${this.state.projectionEnd}
+            onChange=${(start, end) => this.onUpdateProjectionWindow(start, end)}
+        />
+        <${OccurrencesDisplay} value=${this.state.occurrences} />
       `;
     }
   }
