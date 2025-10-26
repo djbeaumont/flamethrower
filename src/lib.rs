@@ -11,17 +11,6 @@ mod interval;
 mod recurrence;
 
 #[wasm_bindgen]
-extern "C" {
-    pub fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet(name: &str) -> String {
-    // alert(&format!("Hello, {}!", name));
-    format!("Hello, {}!", name)
-}
-
-#[wasm_bindgen]
 pub fn between(begin: &str, end: &str) -> Vec<String> {
     let timing = FhirTiming {
         repeat: FhirTimingRepeat {
