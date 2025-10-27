@@ -3,9 +3,7 @@ name: Deploy static content to Pages
 on:
   # Runs on pushes targeting the default branch
   push:
-    branches: [$default-branch]
-
-  # Allows you to run this workflow manually from the Actions tab
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -34,7 +32,7 @@ jobs:
       - name: Make an artifact
         run: |
           mkdir -p ${{ runner.temp }}/web
-          cp pkg ${{ runner.temp }}/web
+          cp -R pkg ${{ runner.temp }}/web
           cp index.html ${{ runner.temp }}/web
 
       - name: Upload artifact
