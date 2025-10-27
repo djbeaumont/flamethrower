@@ -33,14 +33,14 @@ jobs:
 
       - name: Make an artifact
         run: |
-          mkdir -p ${TMPDIR}/web
-          cp pkg ${TMPDIR}/web
-          cp index.html ${TMPDIR}/web
+          mkdir -p ${{ runner.temp }}/web
+          cp pkg ${{ runner.temp }}/web
+          cp index.html ${{ runner.temp }}/web
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './pkg'
+          path: ${{ runner.temp }}/web
 
       - name: Deploy to GitHub Pages
         id: deployment
