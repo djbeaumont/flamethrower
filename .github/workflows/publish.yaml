@@ -1,0 +1,47 @@
+name: Deploy static content to Pages
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: [$default-branch]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746 # pin@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Build for wasm
+        run: wasm-pack build --target web
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Make an artifact
+        run: |
+          mkdir -p ${TMPDIR}/web
+          cp pkg ${TMPDIR}/web
+          cp index.html ${TMPDIR}/web
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './pkg'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
